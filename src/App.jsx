@@ -5,6 +5,8 @@ import './App.css'
 import Layout from './components/Layout'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
+
+import Dashboard from './pages/Dashboard';
 import Campanas from './pages/Campanas';
 import Ofertas from './pages/Ofertas';
 import Fuentes from './pages/Fuentes';
@@ -19,7 +21,7 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={<div>Dashboard</div>} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/campanas" element={<Campanas />} />
           <Route path="/ofertas" element={<Ofertas />} />
           <Route path="/fuentes" element={<Fuentes />} />
