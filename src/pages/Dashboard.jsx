@@ -1,7 +1,8 @@
+
 import * as React from "react";
+import { useEffect, useState } from "react";
 import DateRangePicker from "../components/DateRangePicker";
 import DashboardCard from "../components/DashboardCard";
-// import Chart.js components
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -24,62 +25,23 @@ ChartJS.register(
   Legend
 );
 
-const kpiList = [
-  { label: 'Visitas', value: 17000, color: 'bg-blue-100', text: 'text-blue-800' },
-  { label: 'Clics', value: 750, color: 'bg-green-100', text: 'text-green-800' },
-  { label: 'Conversiones', value: 33, color: 'bg-purple-100', text: 'text-purple-800' },
-  { label: 'Ingresos', value: 1300, color: 'bg-yellow-100', text: 'text-yellow-800' },
-  { label: 'Costo', value: 900, color: 'bg-red-100', text: 'text-red-800' },
-  { label: 'Beneficio', value: 400, color: 'bg-teal-100', text: 'text-teal-800' },
-  { label: 'ROI', value: '144%', color: 'bg-pink-100', text: 'text-pink-800' },
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+
+const kpiMeta = [
+  { label: 'Visitas', key: 'visitas', color: 'bg-blue-100', text: 'text-blue-800' },
+  { label: 'Clics', key: 'clics', color: 'bg-green-100', text: 'text-green-800' },
+  { label: 'Conversiones', key: 'conversiones', color: 'bg-purple-100', text: 'text-purple-800' },
+  { label: 'Ingresos', key: 'ingresos', color: 'bg-yellow-100', text: 'text-yellow-800' },
+  { label: 'Costo', key: 'costo', color: 'bg-red-100', text: 'text-red-800' },
+  { label: 'Beneficio', key: 'beneficio', color: 'bg-teal-100', text: 'text-teal-800' },
+  { label: 'ROI', key: 'roi', color: 'bg-pink-100', text: 'text-pink-800' },
 ];
 
-const chartData = {
-  labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-  datasets: [
-    {
-      label: 'Visitas',
-      data: [2000, 2500, 3000, 2800, 2600, 3200, 2900],
-      borderColor: '#3B82F6',
-      backgroundColor: 'rgba(59,130,246,0.1)',
-      tension: 0.4,
-    },
-    {
-      label: 'Clics',
-      data: [90, 110, 120, 100, 95, 130, 105],
-      borderColor: '#22C55E',
-      backgroundColor: 'rgba(34,197,94,0.1)',
-      tension: 0.4,
-    },
-    {
-      label: 'Conversiones',
-      data: [4, 5, 6, 5, 4, 7, 6],
-      borderColor: '#A21CAF',
-      backgroundColor: 'rgba(168,85,247,0.1)',
-      tension: 0.4,
-    },
-    {
-      label: 'Ingresos',
-      data: [200, 250, 300, 280, 260, 320, 290],
-      borderColor: '#F59E42',
-      backgroundColor: 'rgba(251,191,36,0.1)',
-      tension: 0.4,
-    },
-    {
-      label: 'Costo',
-      data: [120, 130, 140, 135, 125, 150, 140],
-      borderColor: '#EF4444',
-      backgroundColor: 'rgba(239,68,68,0.1)',
-      tension: 0.4,
-    },
-    {
-      label: 'Beneficio',
-      data: [80, 120, 160, 145, 135, 170, 150],
-      borderColor: '#14B8A6',
-      backgroundColor: 'rgba(20,184,166,0.1)',
-      tension: 0.4,
-    },
-  ],
+
+const defaultChartData = {
+  labels: [],
+  datasets: [],
 };
 
 const chartOptions = {
@@ -95,7 +57,120 @@ const chartOptions = {
   },
 };
 
+
 const Dashboard = () => {
+  const [landingPages, setLandingPages] = useState([]);
+  const [kpis, setKpis] = useState(null);
+  const [chartData, setChartData] = useState(defaultChartData);
+  const [campanias, setCampanias] = useState([]);
+  const [ofertas, setOfertas] = useState([]);
+  const [fuentes, setFuentes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetch(`${API_BASE}/dashboard_kpis.php`).then(res => res.json()),
+      fetch(`${API_BASE}/dashboard_series.php`).then(res => res.json()),
+      fetch(`${API_BASE}/paginas_destino.php`).then(res => res.json()),
+      fetch(`${API_BASE}/campanias.php`).then(res => res.json()),
+      fetch(`${API_BASE}/ofertas.php`).then(res => res.json()),
+      fetch(`${API_BASE}/fuentes.php`).then(res => res.json()),
+    ])
+      .then(([kpiData, seriesData, landingData, campaniasData, ofertasData, fuentesData]) => {
+        setKpis(kpiData);
+        setChartData({
+          labels: seriesData.labels,
+          datasets: [
+            {
+              label: 'Visitas',
+              data: seriesData.visitas,
+              borderColor: '#3B82F6',
+              backgroundColor: 'rgba(59,130,246,0.1)',
+              tension: 0.4,
+            },
+            {
+              label: 'Clics',
+              data: seriesData.clics,
+              borderColor: '#22C55E',
+              backgroundColor: 'rgba(34,197,94,0.1)',
+              tension: 0.4,
+            },
+            {
+              label: 'Conversiones',
+              data: seriesData.conversiones,
+              borderColor: '#A21CAF',
+              backgroundColor: 'rgba(168,85,247,0.1)',
+              tension: 0.4,
+            },
+            {
+              label: 'Ingresos',
+              data: seriesData.ingresos,
+              borderColor: '#F59E42',
+              backgroundColor: 'rgba(251,191,36,0.1)',
+              tension: 0.4,
+            },
+            {
+              label: 'Costo',
+              data: seriesData.costo,
+              borderColor: '#EF4444',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              tension: 0.4,
+            },
+            {
+              label: 'Beneficio',
+              data: seriesData.beneficio,
+              borderColor: '#14B8A6',
+              backgroundColor: 'rgba(20,184,166,0.1)',
+              tension: 0.4,
+            },
+          ],
+        });
+        setLandingPages(
+          landingData.map(p => ({
+            label: p.nombre,
+            value: p.url
+          }))
+        );
+        // Top 5 campañas por visitas
+        setCampanias(
+          campaniasData
+            .sort((a, b) => (b.visitas || 0) - (a.visitas || 0))
+            .slice(0, 5)
+            .map(c => ({ label: c.nombre, value: c.visitas }))
+        );
+        // Top 5 ofertas por conversiones
+        setOfertas(
+          ofertasData
+            .sort((a, b) => (b.conversiones || 0) - (a.conversiones || 0))
+            .slice(0, 5)
+            .map(o => ({ label: o.nombre, value: o.conversiones }))
+        );
+        // Top 5 fuentes por clics
+        setFuentes(
+          fuentesData
+            .sort((a, b) => (b.clics || 0) - (a.clics || 0))
+            .slice(0, 5)
+            .map(f => ({ label: f.nombre, value: f.clics }))
+        );
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError('Error al cargar los datos del dashboard');
+        setLoading(false);
+      });
+  }, []);
+
+
+  if (loading) {
+    return <div className="p-6 max-w-6xl mx-auto">Cargando dashboard...</div>;
+  }
+  if (error) {
+    return <div className="p-6 max-w-6xl mx-auto text-red-600">{error}</div>;
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -108,23 +183,23 @@ const Dashboard = () => {
       </div>
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        {kpiList.map(kpi => (
+        {kpiMeta.map(kpi => (
           <div key={kpi.label} className={`rounded-lg shadow-sm p-4 flex flex-col items-center ${kpi.color}`}>
-            <span className={`text-lg font-bold ${kpi.text}`}>{kpi.value}</span>
+            <span className={`text-lg font-bold ${kpi.text}`}>{kpis ? kpis[kpi.key] : '-'}</span>
             <span className="text-xs text-gray-500 mt-1">{kpi.label}</span>
           </div>
         ))}
       </div>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <h4>Estadisticas</h4>
+        <h4>Estadísticas</h4>
         <div>
           <label>Mostrar: </label>
           <select className="border rounded px-2 py-1 text-sm">
             <option>Visitas</option>
-            <option>Click</option>
+            <option>Clics</option>
             <option>Conversiones</option>
             <option>Ingresos</option>
-            <option>Beneficios</option>
+            <option>Beneficio</option>
           </select>
         </div>
       </div>
@@ -133,46 +208,22 @@ const Dashboard = () => {
         <DashboardCard
           title="Campañas"
           subtitle="Visitas"
-          rows={[
-            { label: "Campaña 1", value: 1200 },
-            { label: "Campaña 2", value: 950 },
-            { label: "Campaña 3", value: 870 },
-            { label: "Campaña 4", value: 650 },
-            { label: "Campaña 5", value: 500 },
-          ]}
+          rows={campanias}
         />
         <DashboardCard
           title="Ofertas"
           subtitle="Conversiones"
-          rows={[
-            { label: "Oferta 1", value: 30 },
-            { label: "Oferta 2", value: 22 },
-            { label: "Oferta 3", value: 18 },
-            { label: "Oferta 4", value: 15 },
-            { label: "Oferta 5", value: 10 },
-          ]}
+          rows={ofertas}
         />
         <DashboardCard
           title="Fuentes"
           subtitle="Clics"
-          rows={[
-            { label: "Fuente 1", value: 400 },
-            { label: "Fuente 2", value: 350 },
-            { label: "Fuente 3", value: 300 },
-            { label: "Fuente 4", value: 250 },
-            { label: "Fuente 5", value: 200 },
-          ]}
+          rows={fuentes}
         />
         <DashboardCard
-          title="Flows"
-          subtitle="Ingresos"
-          rows={[
-            { label: "Flow 1", value: "$500" },
-            { label: "Flow 2", value: "$420" },
-            { label: "Flow 3", value: "$380" },
-            { label: "Flow 4", value: "$300" },
-            { label: "Flow 5", value: "$250" },
-          ]}
+          title="Páginas Destino"
+          subtitle="Landing Pages"
+          rows={landingPages}
         />
       </div>
       {/* Gráfico de líneas */}

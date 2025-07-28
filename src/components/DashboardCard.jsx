@@ -9,7 +9,7 @@ const DashboardCard = ({ title, subtitle, rows }) => (
     </div>
     {rows && rows.length > 0 ? (
       rows.map((row, idx) => (
-        <div key={idx} className="px-2 flex justify-between items-center border-b last:border-b-0 py-1">
+        <div key={idx} className="px-2 flex justify-between items-center border-b border-gray-200 last:border-b-0 py-1">
           <div>{row.label}</div>
           <div>{row.value}</div>
         </div>

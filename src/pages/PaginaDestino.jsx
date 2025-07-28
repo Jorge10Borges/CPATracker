@@ -4,57 +4,7 @@ import DateRangePicker from "../components/DateRangePicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
-// Datos de ejemplo para la tabla de Página Destino
-const defaultData = [
-  {
-    pagina: "Landing 1",
-    visitas: 8000,
-    visitas_unicas: 7200,
-    clics: 350,
-    clics_unicos: 320,
-    conversiones: 15,
-    ingresos: 600,
-    costo: 400,
-    beneficio: 200,
-    cpv: 0.05,
-    cpc: 1.14,
-    ctr: "4.4%",
-    ctr1x: "1/23",
-    uctr: "4.2%",
-    cr: "4.3%",
-    cr1x: "1/24",
-    cv: 15,
-    cv1x: "1/533",
-    roi: "150%",
-    epv: 0.08,
-    epc: 1.71,
-    ap: 40,
-  },
-  {
-    pagina: "Landing 2",
-    visitas: 9000,
-    visitas_unicas: 8100,
-    clics: 400,
-    clics_unicos: 370,
-    conversiones: 18,
-    ingresos: 700,
-    costo: 500,
-    beneficio: 200,
-    cpv: 0.055,
-    cpc: 1.25,
-    ctr: "4.5%",
-    ctr1x: "1/22",
-    uctr: "4.3%",
-    cr: "4.5%",
-    cr1x: "1/22",
-    cv: 18,
-    cv1x: "1/500",
-    roi: "140%",
-    epv: 0.09,
-    epc: 1.75,
-    ap: 45,
-  },
-];
+// Datos de ejemplo eliminados. Se usará fetch para cargar datos reales.
 
 const defaultColumns = [
   { header: "Página destino", accessorKey: "pagina", size: 160, minSize: 100, enableResizing: true },
@@ -81,12 +31,47 @@ const defaultColumns = [
   { header: "AP", accessorKey: "ap", size: 60, minSize: 50, enableResizing: true },
 ];
 
+
 const PaginaDestino = () => {
-  const [data] = React.useState(() => [...defaultData]);
+  const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+
+  React.useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    fetch(apiUrl + "paginas_destino.php")
+      .then(res => res.json())
+      .then(apiData => {
+        // Mapear los datos del API a las columnas esperadas por la tabla
+        const mapped = apiData.map(row => ({
+          pagina: row.nombre,
+          visitas: 0,
+          visitas_unicas: 0,
+          clics: 0,
+          clics_unicos: 0,
+          conversiones: 0,
+          ingresos: 0,
+          costo: 0,
+          beneficio: 0,
+          cpv: 0,
+          cpc: 0,
+          ctr: "0%",
+          ctr1x: "",
+          uctr: "0%",
+          cr: "0%",
+          cr1x: "",
+          cv: 0,
+          cv1x: "",
+          roi: "0%",
+          epv: 0,
+          epc: 0,
+          ap: 0,
+        }));
+        setData(mapped);
+      });
+  }, []);
 
   const filteredData = React.useMemo(() => {
     if (!search.trim()) return data;
