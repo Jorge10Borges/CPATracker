@@ -4,57 +4,7 @@ import DateRangePicker from "../components/DateRangePicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
-// Datos de ejemplo para la tabla Personalizado
-const defaultData = [
-  {
-    nombre: "Personalizado 1",
-    visitas: 7000,
-    visitas_unicas: 6300,
-    clics: 300,
-    clics_unicos: 270,
-    conversiones: 12,
-    ingresos: 500,
-    costo: 350,
-    beneficio: 150,
-    cpv: 0.05,
-    cpc: 1.16,
-    ctr: "4.3%",
-    ctr1x: "1/23",
-    uctr: "4.1%",
-    cr: "4%",
-    cr1x: "1/25",
-    cv: 12,
-    cv1x: "1/583",
-    roi: "143%",
-    epv: 0.07,
-    epc: 1.85,
-    ap: 6,
-  },
-  {
-    nombre: "Personalizado 2",
-    visitas: 9500,
-    visitas_unicas: 8550,
-    clics: 420,
-    clics_unicos: 390,
-    conversiones: 20,
-    ingresos: 800,
-    costo: 600,
-    beneficio: 200,
-    cpv: 0.063,
-    cpc: 1.43,
-    ctr: "4.4%",
-    ctr1x: "1/21",
-    uctr: "4.3%",
-    cr: "4.8%",
-    cr1x: "1/21",
-    cv: 20,
-    cv1x: "1/475",
-    roi: "133%",
-    epv: 0.09,
-    epc: 2.05,
-    ap: 9,
-  },
-];
+
 
 const defaultColumns = [
   { header: "Personalizado", accessorKey: "nombre", size: 160, minSize: 100, enableResizing: true },
@@ -81,12 +31,51 @@ const defaultColumns = [
   { header: "AP", accessorKey: "ap", size: 60, minSize: 50, enableResizing: true },
 ];
 
+
 const Personalizado = () => {
-  const [data] = React.useState(() => [...defaultData]);
+  const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+  const tokens = Array.from({ length: 10 }, (_, i) => `token ${i + 1}`);
+  const [selectedToken, setSelectedToken] = React.useState(tokens[0]);
+
+  // Cargar datos reales agrupados por el token seleccionado
+  React.useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const tokenParam = selectedToken.replace(' ', ''); // token1, token2, ...
+    fetch(`${apiUrl}personalizado_stats.php?token=${tokenParam}`)
+      .then(res => res.json())
+      .then(apiData => {
+        // Mapear los datos del API a las columnas esperadas por la tabla
+        const mapped = apiData.map(row => ({
+          nombre: row.nombre || "empty",
+          visitas: Number(row.visitas) || 0,
+          visitas_unicas: Number(row.visitas_unicas) || 0,
+          clics: Number(row.clics) || 0,
+          clics_unicos: 0, // Si tienes este dato en el futuro, agrégalo aquí
+          conversiones: Number(row.conversiones) || 0,
+          ingresos: Number(row.ingresos) || 0,
+          costo: Number(row.costo) || 0,
+          beneficio: Number(row.beneficio) || 0,
+          cpv: row.visitas > 0 ? (row.costo / row.visitas).toFixed(2) : "0.00",
+          cpc: row.clics > 0 ? (row.costo / row.clics).toFixed(2) : "0.00",
+          ctr: (row.CTR || 0) + "%",
+          ctr1x: row.CTR > 0 ? `1/${Math.round(100/row.CTR)}` : "",
+          uctr: "", // Si tienes este dato en el futuro, agrégalo aquí
+          cr: (row.CR || 0) + "%",
+          cr1x: row.CR > 0 ? `1/${Math.round(100/row.CR)}` : "",
+          cv: row.conversiones || 0,
+          cv1x: row.conversiones > 0 ? (1/row.conversiones).toFixed(4) : "",
+          roi: "", // Si tienes este dato en el futuro, agrégalo aquí
+          epv: row.visitas > 0 ? (row.ingresos / row.visitas).toFixed(2) : "0.00",
+          epc: row.clics > 0 ? (row.ingresos / row.clics).toFixed(2) : "0.00",
+          ap: row.visitas > 0 ? (row.beneficio / row.visitas).toFixed(2) : "0.00",
+        }));
+        setData(mapped);
+      });
+  }, [selectedToken]);
 
   const filteredData = React.useMemo(() => {
     if (!search.trim()) return data;
@@ -104,10 +93,6 @@ const Personalizado = () => {
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode: "onChange",
   });
-
-  // Opciones de tokens personalizados
-  const tokens = Array.from({ length: 10 }, (_, i) => `token ${i + 1}`);
-  const [selectedToken, setSelectedToken] = React.useState(tokens[0]);
 
   return (
     <DataTableSection

@@ -6,109 +6,8 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
 
-// Datos de ejemplo para la tabla
-const defaultData = [
-  {
-    campana: "Facebook Ads",
-    visitas: 20000,
-    visitas_unicas: 15000,
-    clics: 600,
-    clics_unicos: 500,
-    conversiones: 35,
-    ingresos: 1500,
-    // ingresos_ocultos eliminado
-    costo: 1200,
-    beneficio: 300,
-    cpv: 0.08,
-    cpc: 2.5,
-    ctr: "3%",
-    ctr1x: 0.03,
-    uctr: "2.5%",
-    cr: "5%",
-    cr1x: 0.05,
-    cv: 30,
-    cv1x: 0.002,
-    roi: "110%",
-    epv: 1.1,
-    epc: 0.9,
-    ap: 12,
-  },
-  {
-    campana: "Instagram Ads",
-    visitas: 12000,
-    visitas_unicas: 9000,
-    clics: 450,
-    clics_unicos: 400,
-    conversiones: 25,
-    ingresos: 900,
-    // ingresos_ocultos eliminado
-    costo: 950,
-    beneficio: -50,
-    cpv: 0.079,
-    cpc: 2.1,
-    ctr: "3.7%",
-    ctr1x: 0.037,
-    uctr: "3.3%",
-    cr: "4.5%",
-    cr1x: 0.045,
-    cv: 22,
-    cv1x: 0.0018,
-    roi: "95%",
-    epv: 0.95,
-    epc: 0.7,
-    ap: 9,
-  },
-  {
-    campana: "Google Ads",
-    visitas: 25000,
-    visitas_unicas: 18000,
-    clics: 800,
-    clics_unicos: 700,
-    conversiones: 55,
-    ingresos: 2000,
-    // ingresos_ocultos eliminado
-    costo: 1500,
-    beneficio: 500,
-    cpv: 0.06,
-    cpc: 1.9,
-    ctr: "3.2%",
-    ctr1x: 0.032,
-    uctr: "2.8%",
-    cr: "6%",
-    cr1x: 0.06,
-    cv: 48,
-    cv1x: 0.0026,
-    roi: "130%",
-    epv: 1.3,
-    epc: 1.0,
-    ap: 15,
-  },
-  {
-    campana: "TikTok Ads",
-    visitas: 9000,
-    visitas_unicas: 7000,
-    clics: 350,
-    clics_unicos: 300,
-    conversiones: 22,
-    ingresos: 800,
-    // ingresos_ocultos eliminado
-    costo: 760,
-    beneficio: 40,
-    cpv: 0.084,
-    cpc: 2.3,
-    ctr: "3.9%",
-    ctr1x: 0.039,
-    uctr: "3.2%",
-    cr: "5.7%",
-    cr1x: 0.057,
-    cv: 20,
-    cv1x: 0.0022,
-    roi: "105%",
-    epv: 1.05,
-    epc: 0.8,
-    ap: 7,
-  },
-];
+// Cargar datos reales del API
+
 
 const defaultColumns = [
   { header: "Campaña", accessorKey: "campana", size: 160, minSize: 100, enableResizing: true },
@@ -139,12 +38,48 @@ const defaultColumns = [
 // ...existing code...
 
 
+
 const Campanas = () => {
-  const [data] = React.useState(() => [...defaultData]);
+  const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+
+  // Cargar datos reales del API al montar el componente
+  React.useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    fetch(apiUrl + "campanias_stats.php")
+      .then(res => res.json())
+      .then(apiData => {
+        // Mapear los datos del API a las columnas esperadas por la tabla
+        const mapped = apiData.map(row => ({
+          campana: row.nombre,
+          visitas: Number(row.visitas) || 0,
+          visitas_unicas: Number(row.visitas_unicas) || 0,
+          clics: Number(row.clics) || 0,
+          clics_unicos: 0, // Si tienes este dato en el futuro, agrégalo aquí
+          conversiones: Number(row.conversiones) || 0,
+          ingresos: Number(row.ingresos) || 0,
+          costo: Number(row.costo) || 0,
+          beneficio: Number(row.beneficio) || 0,
+          cpv: row.visitas > 0 ? (row.costo / row.visitas).toFixed(2) : "0.00",
+          cpc: row.clics > 0 ? (row.costo / row.clics).toFixed(2) : "0.00",
+          ctr: (row.CTR || 0) + "%",
+          ctr1x: row.CTR > 0 ? `1/${Math.round(100/row.CTR)}` : "",
+          uctr: "", // Si tienes este dato en el futuro, agrégalo aquí
+          cr: (row.CR || 0) + "%",
+          cr1x: row.CR > 0 ? `1/${Math.round(100/row.CR)}` : "",
+          cv: row.conversiones || 0,
+          cv1x: row.conversiones > 0 ? (1/row.conversiones).toFixed(4) : "",
+          roi: "", // Si tienes este dato en el futuro, agrégalo aquí
+          epv: row.visitas > 0 ? (row.ingresos / row.visitas).toFixed(2) : "0.00",
+          epc: row.clics > 0 ? (row.ingresos / row.clics).toFixed(2) : "0.00",
+          ap: row.visitas > 0 ? (row.beneficio / row.visitas).toFixed(2) : "0.00",
+        }));
+        setData(mapped);
+      });
+  }, []);
 
   // Filtrar datos por coincidencia en cualquier columna
   const filteredData = React.useMemo(() => {

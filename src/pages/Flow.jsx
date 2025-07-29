@@ -4,57 +4,7 @@ import DateRangePicker from "../components/DateRangePicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
-// Datos de ejemplo para la tabla de Flows
-const defaultData = [
-  {
-    flow: "Flow 1",
-    visitas: 5000,
-    visitas_unicas: 4500,
-    clics: 200,
-    clics_unicos: 180,
-    conversiones: 10,
-    ingresos: 400,
-    costo: 250,
-    beneficio: 150,
-    cpv: 0.05,
-    cpc: 1.25,
-    ctr: "4%",
-    ctr1x: "1/25",
-    uctr: "3.8%",
-    cr: "5%",
-    cr1x: "1/20",
-    cv: 10,
-    cv1x: "1/500",
-    roi: "160%",
-    epv: 0.08,
-    epc: 2.0,
-    ap: 5,
-  },
-  {
-    flow: "Flow 2",
-    visitas: 7000,
-    visitas_unicas: 6300,
-    clics: 350,
-    clics_unicos: 320,
-    conversiones: 18,
-    ingresos: 700,
-    costo: 400,
-    beneficio: 300,
-    cpv: 0.057,
-    cpc: 1.14,
-    ctr: "5%",
-    ctr1x: "1/20",
-    uctr: "4.6%",
-    cr: "5.1%",
-    cr1x: "1/19",
-    cv: 18,
-    cv1x: "1/389",
-    roi: "175%",
-    epv: 0.10,
-    epc: 2.2,
-    ap: 7,
-  },
-];
+// Se usará fetch para cargar datos reales del API
 
 const defaultColumns = [
   { header: "Flow", accessorKey: "flow", size: 160, minSize: 100, enableResizing: true },
@@ -82,11 +32,46 @@ const defaultColumns = [
 ];
 
 const Flow = () => {
-  const [data] = React.useState(() => [...defaultData]);
+  const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+
+  // Cargar datos reales del API al montar el componente
+  React.useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    fetch(apiUrl + "flows_stats.php")
+      .then(res => res.json())
+      .then(apiData => {
+        // Mapear los datos del API a las columnas esperadas por la tabla
+        const mapped = apiData.map(row => ({
+          flow: row.nombre,
+          visitas: Number(row.visitas) || 0,
+          visitas_unicas: Number(row.visitas_unicas) || 0,
+          clics: Number(row.clics) || 0,
+          clics_unicos: 0, // Si tienes este dato en el futuro, agrégalo aquí
+          conversiones: Number(row.conversiones) || 0,
+          ingresos: Number(row.ingresos) || 0,
+          costo: Number(row.costo) || 0,
+          beneficio: Number(row.beneficio) || 0,
+          cpv: row.visitas > 0 ? (row.costo / row.visitas).toFixed(2) : "0.00",
+          cpc: row.clics > 0 ? (row.costo / row.clics).toFixed(2) : "0.00",
+          ctr: row.CTR + "%",
+          ctr1x: row.CTR > 0 ? `1/${Math.round(100/row.CTR)}` : "",
+          uctr: "", // Si tienes este dato en el futuro, agrégalo aquí
+          cr: row.CR + "%",
+          cr1x: row.CR > 0 ? `1/${Math.round(100/row.CR)}` : "",
+          cv: row.conversiones || 0,
+          cv1x: row.conversiones > 0 ? (1/row.conversiones).toFixed(4) : "",
+          roi: "", // Si tienes este dato en el futuro, agrégalo aquí
+          epv: row.visitas > 0 ? (row.ingresos / row.visitas).toFixed(2) : "0.00",
+          epc: row.clics > 0 ? (row.ingresos / row.clics).toFixed(2) : "0.00",
+          ap: row.visitas > 0 ? (row.beneficio / row.visitas).toFixed(2) : "0.00",
+        }));
+        setData(mapped);
+      });
+  }, []);
 
   const filteredData = React.useMemo(() => {
     if (!search.trim()) return data;

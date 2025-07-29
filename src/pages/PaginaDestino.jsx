@@ -41,33 +41,33 @@ const PaginaDestino = () => {
 
   React.useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    fetch(apiUrl + "paginas_destino.php")
+    fetch(apiUrl + "paginas_destino_stats.php")
       .then(res => res.json())
       .then(apiData => {
         // Mapear los datos del API a las columnas esperadas por la tabla
         const mapped = apiData.map(row => ({
           pagina: row.nombre,
-          visitas: 0,
-          visitas_unicas: 0,
-          clics: 0,
-          clics_unicos: 0,
-          conversiones: 0,
-          ingresos: 0,
-          costo: 0,
-          beneficio: 0,
-          cpv: 0,
-          cpc: 0,
-          ctr: "0%",
-          ctr1x: "",
-          uctr: "0%",
-          cr: "0%",
-          cr1x: "",
-          cv: 0,
-          cv1x: "",
-          roi: "0%",
-          epv: 0,
-          epc: 0,
-          ap: 0,
+          visitas: Number(row.visitas) || 0,
+          visitas_unicas: Number(row.visitas_unicas) || 0,
+          clics: Number(row.clics) || 0,
+          clics_unicos: 0, // Si tienes este dato en el futuro, agrégalo aquí
+          conversiones: Number(row.conversiones) || 0,
+          ingresos: Number(row.ingresos) || 0,
+          costo: Number(row.costo) || 0,
+          beneficio: Number(row.beneficio) || 0,
+          cpv: row.visitas > 0 ? (row.costo / row.visitas).toFixed(2) : "0.00",
+          cpc: row.clics > 0 ? (row.costo / row.clics).toFixed(2) : "0.00",
+          ctr: row.CTR + "%",
+          ctr1x: row.CTR > 0 ? `1/${Math.round(100/row.CTR)}` : "",
+          uctr: "0%", // Si tienes este dato en el futuro, agrégalo aquí
+          cr: row.CR + "%",
+          cr1x: row.CR > 0 ? `1/${Math.round(100/row.CR)}` : "",
+          cv: row.conversiones,
+          cv1x: row.conversiones > 0 ? `1/${row.conversiones}` : "",
+          roi: row.costo > 0 ? ((row.beneficio / row.costo) * 100).toFixed(2) + "%" : "0%",
+          epv: row.visitas > 0 ? (row.ingresos / row.visitas).toFixed(2) : "0.00",
+          epc: row.clics > 0 ? (row.ingresos / row.clics).toFixed(2) : "0.00",
+          ap: row.visitas > 0 ? (row.beneficio / row.visitas).toFixed(2) : "0.00",
         }));
         setData(mapped);
       });
