@@ -67,17 +67,23 @@ const Dashboard = () => {
   const [fuentes, setFuentes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
 
   useEffect(() => {
     setLoading(true);
     setError(null);
+    // Construir query string para fechas
+    let dateQuery = "";
+    if (dateRange.start && dateRange.end) {
+      dateQuery = `?start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
+    }
     Promise.all([
-      fetch(`${API_BASE}/dashboard_kpis.php`).then(res => res.json()),
-      fetch(`${API_BASE}/dashboard_series.php`).then(res => res.json()),
-      fetch(`${API_BASE}/paginas_destino.php`).then(res => res.json()),
-      fetch(`${API_BASE}/campanias.php`).then(res => res.json()),
-      fetch(`${API_BASE}/ofertas.php`).then(res => res.json()),
-      fetch(`${API_BASE}/fuentes.php`).then(res => res.json()),
+      fetch(`${API_BASE}/dashboard_kpis.php${dateQuery}`).then(res => res.json()),
+      fetch(`${API_BASE}/dashboard_series.php${dateQuery}`).then(res => res.json()),
+      fetch(`${API_BASE}/paginas_destino.php${dateQuery}`).then(res => res.json()),
+      fetch(`${API_BASE}/campanias.php${dateQuery}`).then(res => res.json()),
+      fetch(`${API_BASE}/ofertas.php${dateQuery}`).then(res => res.json()),
+      fetch(`${API_BASE}/fuentes.php${dateQuery}`).then(res => res.json()),
     ])
       .then(([kpiData, seriesData, landingData, campaniasData, ofertasData, fuentesData]) => {
         setKpis(kpiData);
@@ -161,7 +167,7 @@ const Dashboard = () => {
         setError('Error al cargar los datos del dashboard');
         setLoading(false);
       });
-  }, []);
+  }, [dateRange]);
 
 
   if (loading) {
@@ -177,8 +183,8 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-bold text-[#273958]">Dashboard</h1>
         <div className="flex items-center gap-2">
-          <DateRangePicker />
-          <button className="bg-[#273958] hover:bg-[#1b263b] text-white font-semibold px-4 py-2 rounded">Actualizar</button>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          {/* Botón Aplicar eliminado, ahora está dentro del DateRangePicker */}
         </div>
       </div>
       {/* KPIs */}
