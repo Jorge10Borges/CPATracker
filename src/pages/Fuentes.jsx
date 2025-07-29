@@ -37,14 +37,18 @@ const Fuentes = () => {
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+  const [dateRange, setDateRange] = React.useState({ start: null, end: null });
 
-  // Cargar datos reales del API al montar el componente
+  // Cargar datos reales del API filtrando por fechas
   React.useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    fetch(apiUrl + "fuentes_stats.php")
+    let url = apiUrl + "fuentes_stats.php";
+    if (dateRange.start && dateRange.end) {
+      url += `?start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
+    }
+    fetch(url)
       .then(res => res.json())
       .then(apiData => {
-        // Mapear los datos del API a las columnas esperadas por la tabla
         const mapped = apiData.map(row => ({
           fuente: row.nombre,
           visitas: Number(row.visitas) || 0,
@@ -71,7 +75,7 @@ const Fuentes = () => {
         }));
         setData(mapped);
       });
-  }, []);
+  }, [dateRange]);
 
   const filteredData = React.useMemo(() => {
     if (!search.trim()) return data;
@@ -97,9 +101,9 @@ const Fuentes = () => {
         <>
           <div className="flex items-center gap-1 text-sm">
             <span>Fecha:</span>
-            <DateRangePicker />
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
-          <button className="bg-[#273958] hover:bg-[#1b263b] text-white font-semibold px-3 py-1 rounded cursor-pointer">Aplicar</button>
+          {/* Botón Aplicar eliminado, ahora está dentro del DateRangePicker */}
           <input
             type="text"
             placeholder="Buscar..."
