@@ -37,11 +37,16 @@ const Ofertas = () => {
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
+  const [dateRange, setDateRange] = React.useState({ start: null, end: null });
 
   // Cargar datos reales del API al montar el componente
   React.useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    fetch(apiUrl + "ofertas_stats.php")
+    let url = apiUrl + "ofertas_stats.php";
+    if (dateRange.start && dateRange.end) {
+      url += `?start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
+    }
+    fetch(url)
       .then(res => res.json())
       .then(apiData => {
         // Mapear los datos del API a las columnas esperadas por la tabla
@@ -98,9 +103,9 @@ const Ofertas = () => {
         <>
           <div className="flex items-center gap-1 text-sm">
             <span>Fecha:</span>
-            <DateRangePicker />
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
-          <button className="bg-[#273958] hover:bg-[#1b263b] text-white font-semibold px-3 py-1 rounded cursor-pointer">Aplicar</button>
+          {/* Botón Aplicar eliminado, ahora está dentro del DateRangePicker */}
           <input
             type="text"
             placeholder="Buscar..."
