@@ -1,6 +1,7 @@
 import * as React from "react";
 import DataTableSection from "../components/DataTableSection";
 import DateRangePicker from "../components/DateRangePicker";
+import { useDateRange } from "../context/DateRangeContext";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
@@ -37,7 +38,7 @@ const Fuentes = () => {
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [selectedRowId, setSelectedRowId] = React.useState(null);
-  const [dateRange, setDateRange] = React.useState({ start: null, end: null });
+  const { dateRange, setDateRange } = useDateRange();
 
   // Cargar datos reales del API filtrando por fechas
   React.useEffect(() => {

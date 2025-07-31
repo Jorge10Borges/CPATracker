@@ -2,6 +2,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import DateRangePicker from "../components/DateRangePicker";
+import { useDateRange } from "../context/DateRangeContext";
 import DashboardCard from "../components/DashboardCard";
 import { Line } from 'react-chartjs-2';
 import {
@@ -67,12 +68,18 @@ const Dashboard = () => {
   const [fuentes, setFuentes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dateRange, setDateRange] = useState({ start: null, end: null });
+  const { dateRange, setDateRange } = useDateRange();
+  const [selectedMetric, setSelectedMetric] = useState('Visitas');
+
+  // Estados para los datos reales de cada entidad según la métrica
+  const [campaniasData, setCampaniasData] = useState([]);
+  const [ofertasData, setOfertasData] = useState([]);
+  const [fuentesData, setFuentesData] = useState([]);
+  const [landingPagesData, setLandingPagesData] = useState([]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    // Construir query string para fechas
     let dateQuery = "";
     if (dateRange.start && dateRange.end) {
       dateQuery = `?start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
@@ -80,87 +87,82 @@ const Dashboard = () => {
     Promise.all([
       fetch(`${API_BASE}/dashboard_kpis.php${dateQuery}`).then(res => res.json()),
       fetch(`${API_BASE}/dashboard_series.php${dateQuery}`).then(res => res.json()),
-      fetch(`${API_BASE}/paginas_destino.php${dateQuery}`).then(res => res.json()),
-      fetch(`${API_BASE}/campanias.php${dateQuery}`).then(res => res.json()),
-      fetch(`${API_BASE}/ofertas.php${dateQuery}`).then(res => res.json()),
-      fetch(`${API_BASE}/fuentes.php${dateQuery}`).then(res => res.json()),
     ])
-      .then(([kpiData, seriesData, landingData, campaniasData, ofertasData, fuentesData]) => {
+      .then(([kpiData, seriesData]) => {
         setKpis(kpiData);
+        // Adaptar para soportar seriesData como array de objetos (por fecha)
+        // o como objeto con arrays por métrica (labels, visitas, clics, etc.)
+        let labels = [];
+        let visitas = [];
+        let clics = [];
+        let conversiones = [];
+        let ingresos = [];
+        let costo = [];
+        let beneficio = [];
+        if (Array.isArray(seriesData)) {
+          labels = seriesData.map(d => d.fecha);
+          visitas = seriesData.map(d => Number(d.visitas) || 0);
+          clics = seriesData.map(d => Number(d.clics) || 0);
+          conversiones = seriesData.map(d => Number(d.conversiones) || 0);
+          ingresos = seriesData.map(d => Number(d.ingresos) || 0);
+          costo = seriesData.map(d => Number(d.costo) || 0);
+          beneficio = seriesData.map(d => Number(d.beneficio) || 0);
+        } else {
+          labels = seriesData.labels || [];
+          visitas = seriesData.visitas || [];
+          clics = seriesData.clics || [];
+          conversiones = seriesData.conversiones || [];
+          ingresos = seriesData.ingresos || [];
+          costo = seriesData.costo || [];
+          beneficio = seriesData.beneficio || [];
+        }
         setChartData({
-          labels: seriesData.labels,
+          labels,
           datasets: [
             {
               label: 'Visitas',
-              data: seriesData.visitas,
+              data: visitas,
               borderColor: '#3B82F6',
               backgroundColor: 'rgba(59,130,246,0.1)',
               tension: 0.4,
             },
             {
               label: 'Clics',
-              data: seriesData.clics,
+              data: clics,
               borderColor: '#22C55E',
               backgroundColor: 'rgba(34,197,94,0.1)',
               tension: 0.4,
             },
             {
               label: 'Conversiones',
-              data: seriesData.conversiones,
+              data: conversiones,
               borderColor: '#A21CAF',
               backgroundColor: 'rgba(168,85,247,0.1)',
               tension: 0.4,
             },
             {
               label: 'Ingresos',
-              data: seriesData.ingresos,
+              data: ingresos,
               borderColor: '#F59E42',
               backgroundColor: 'rgba(251,191,36,0.1)',
               tension: 0.4,
             },
             {
               label: 'Costo',
-              data: seriesData.costo,
+              data: costo,
               borderColor: '#EF4444',
               backgroundColor: 'rgba(239,68,68,0.1)',
               tension: 0.4,
             },
             {
               label: 'Beneficio',
-              data: seriesData.beneficio,
+              data: beneficio,
               borderColor: '#14B8A6',
               backgroundColor: 'rgba(20,184,166,0.1)',
               tension: 0.4,
             },
           ],
         });
-        setLandingPages(
-          landingData.map(p => ({
-            label: p.nombre,
-            value: p.url
-          }))
-        );
-        // Top 5 campañas por visitas
-        setCampanias(
-          campaniasData
-            .sort((a, b) => (b.visitas || 0) - (a.visitas || 0))
-            .slice(0, 5)
-            .map(c => ({ label: c.nombre, value: c.visitas }))
-        );
-        // Top 5 ofertas por conversiones
-        setOfertas(
-          ofertasData
-            .sort((a, b) => (b.conversiones || 0) - (a.conversiones || 0))
-            .slice(0, 5)
-            .map(o => ({ label: o.nombre, value: o.conversiones }))
-        );
-        // Top 5 fuentes por clics
-        setFuentes(
-          fuentesData
-            .sort((a, b) => (b.clics || 0) - (a.clics || 0))
-            .slice(0, 5)
-            .map(f => ({ label: f.nombre, value: f.clics }))
-        );
         setLoading(false);
       })
       .catch((err) => {
@@ -168,6 +170,65 @@ const Dashboard = () => {
         setLoading(false);
       });
   }, [dateRange]);
+
+  // Cargar datos reales para cada entidad según la métrica seleccionada
+  useEffect(() => {
+    // Helper para construir la URL correctamente
+    function buildApiUrl(endpoint) {
+      let url = `${API_BASE.replace(/\/$/, '')}/${endpoint}`;
+      let params = [];
+      if (dateRange.start && dateRange.end) {
+        params.push(`start=${encodeURIComponent(dateRange.start)}`);
+        params.push(`end=${encodeURIComponent(dateRange.end)}`);
+      }
+      params.push(`metric=${selectedMetric.toLowerCase()}`);
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      return url;
+    }
+
+    // Campañas
+    fetch(buildApiUrl('campanias_stats.php'))
+      .then(res => res.json())
+      .then(data => {
+        const rows = (data || [])
+          .sort((a, b) => (b[selectedMetric.toLowerCase()] || 0) - (a[selectedMetric.toLowerCase()] || 0))
+          .slice(0, 5)
+          .map(c => ({ label: c.nombre, value: c[selectedMetric.toLowerCase()] ?? '-' }));
+        setCampaniasData(rows);
+      });
+    // Ofertas
+    fetch(buildApiUrl('ofertas_stats.php'))
+      .then(res => res.json())
+      .then(data => {
+        const rows = (data || [])
+          .sort((a, b) => (b[selectedMetric.toLowerCase()] || 0) - (a[selectedMetric.toLowerCase()] || 0))
+          .slice(0, 5)
+          .map(o => ({ label: o.nombre, value: o[selectedMetric.toLowerCase()] ?? '-' }));
+        setOfertasData(rows);
+      });
+    // Fuentes
+    fetch(buildApiUrl('fuentes_stats.php'))
+      .then(res => res.json())
+      .then(data => {
+        const rows = (data || [])
+          .sort((a, b) => (b[selectedMetric.toLowerCase()] || 0) - (a[selectedMetric.toLowerCase()] || 0))
+          .slice(0, 5)
+          .map(f => ({ label: f.nombre, value: f[selectedMetric.toLowerCase()] ?? '-' }));
+        setFuentesData(rows);
+      });
+    // Páginas destino
+    fetch(buildApiUrl('paginas_destino_stats.php'))
+      .then(res => res.json())
+      .then(data => {
+        const rows = (data || [])
+          .sort((a, b) => (b[selectedMetric.toLowerCase()] || 0) - (a[selectedMetric.toLowerCase()] || 0))
+          .slice(0, 5)
+          .map(p => ({ label: p.nombre, value: p[selectedMetric.toLowerCase()] ?? '-' }));
+        setLandingPagesData(rows);
+      });
+  }, [selectedMetric, dateRange]);
 
 
   if (loading) {
@@ -200,7 +261,11 @@ const Dashboard = () => {
         <h4>Estadísticas</h4>
         <div>
           <label>Mostrar: </label>
-          <select className="border rounded px-2 py-1 text-sm">
+          <select
+            className="border rounded px-2 py-1 text-sm"
+            value={selectedMetric}
+            onChange={e => setSelectedMetric(e.target.value)}
+          >
             <option>Visitas</option>
             <option>Clics</option>
             <option>Conversiones</option>
@@ -213,23 +278,23 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DashboardCard
           title="Campañas"
-          subtitle="Visitas"
-          rows={campanias}
+          subtitle={selectedMetric}
+          rows={campaniasData.length === 5 ? campaniasData : [...campaniasData, ...Array(5 - campaniasData.length).fill({ label: '', value: '' })]}
         />
         <DashboardCard
           title="Ofertas"
-          subtitle="Conversiones"
-          rows={ofertas}
+          subtitle={selectedMetric}
+          rows={ofertasData.length === 5 ? ofertasData : [...ofertasData, ...Array(5 - ofertasData.length).fill({ label: '', value: '' })]}
         />
         <DashboardCard
           title="Fuentes"
-          subtitle="Clics"
-          rows={fuentes}
+          subtitle={selectedMetric}
+          rows={fuentesData.length === 5 ? fuentesData : [...fuentesData, ...Array(5 - fuentesData.length).fill({ label: '', value: '' })]}
         />
         <DashboardCard
           title="Páginas Destino"
-          subtitle="Landing Pages"
-          rows={landingPages}
+          subtitle={selectedMetric}
+          rows={landingPagesData.length === 5 ? landingPagesData : [...landingPagesData, ...Array(5 - landingPagesData.length).fill({ label: '', value: '' })]}
         />
       </div>
       {/* Gráfico de líneas */}

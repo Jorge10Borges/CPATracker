@@ -5,7 +5,15 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/config_db.php';
 
-// Consulta agregada por campaña
+
+// Filtrado por rango de fechas si se reciben los parámetros start y end
+$whereFecha = "";
+if (isset($_GET['start']) && isset($_GET['end'])) {
+    $start = $_GET['start'] . " 00:00:00";
+    $end = $_GET['end'] . " 23:59:59";
+    $whereFecha = " AND et.fecha_hora BETWEEN '" . $conn->real_escape_string($start) . "' AND '" . $conn->real_escape_string($end) . "'";
+}
+
 $sql = "
 SELECT 
   c.id,
@@ -23,6 +31,7 @@ SELECT
   SUM(et.conversion_value) AS beneficio
 FROM campanias c
 LEFT JOIN eventos_tracking et ON et.id_campania = c.id
+    " . ($whereFecha ? "AND 1=1 $whereFecha" : "") . "
 GROUP BY c.id, c.nombre, c.descripcion, c.estado, c.fecha_inicio, c.fecha_fin
 ORDER BY c.nombre
 ";

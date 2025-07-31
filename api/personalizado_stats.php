@@ -9,7 +9,15 @@ require_once __DIR__ . '/config_db.php';
 $token = isset($_GET['token']) ? $_GET['token'] : 'token1';
 $token = preg_replace('/[^a-zA-Z0-9_]/', '', $token); // Sanitiza
 
-// Construye la consulta dinámica
+
+// Filtrado por rango de fechas
+$where = "";
+if (isset($_GET['start']) && isset($_GET['end'])) {
+    $start = $conn->real_escape_string($_GET['start'] . ' 00:00:00');
+    $end = $conn->real_escape_string($_GET['end'] . ' 23:59:59');
+    $where = "WHERE fecha_hora >= '$start' AND fecha_hora <= '$end'";
+}
+
 $sql = "
 SELECT 
   COALESCE($token, 'empty') AS nombre,
@@ -21,6 +29,7 @@ SELECT
   SUM(0) AS costo,
   SUM(conversion_value) AS beneficio
 FROM eventos_tracking
+$where
 GROUP BY nombre
 ORDER BY nombre
 ";

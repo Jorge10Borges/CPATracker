@@ -5,7 +5,15 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/config_db.php';
 
-// Consulta agregada por página de destino
+
+// Filtrado por rango de fechas si se reciben los parámetros start y end
+$whereFecha = "";
+if (isset($_GET['start']) && isset($_GET['end'])) {
+    $start = $_GET['start'] . " 00:00:00";
+    $end = $_GET['end'] . " 23:59:59";
+    $whereFecha = " AND et.fecha_hora BETWEEN '" . $conn->real_escape_string($start) . "' AND '" . $conn->real_escape_string($end) . "'";
+}
+
 $sql = "
 SELECT 
   pd.id,
@@ -22,6 +30,8 @@ SELECT
   SUM(et.conversion_value) AS beneficio
 FROM paginas_destino pd
 LEFT JOIN eventos_tracking et ON et.id_pagina_destino = pd.id
+WHERE pd.excluir = 0
+    " . ($whereFecha ? "AND 1=1 $whereFecha" : "") . "
 GROUP BY pd.id, pd.nombre, pd.url, pd.descripcion, pd.estado
 ORDER BY pd.nombre
 ";

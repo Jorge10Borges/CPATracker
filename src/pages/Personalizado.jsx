@@ -1,6 +1,7 @@
 import * as React from "react";
 import DataTableSection from "../components/DataTableSection";
 import DateRangePicker from "../components/DateRangePicker";
+import { useDateRange } from "../context/DateRangeContext";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
@@ -32,6 +33,7 @@ const defaultColumns = [
 ];
 
 
+
 const Personalizado = () => {
   const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
@@ -40,12 +42,17 @@ const Personalizado = () => {
   const [selectedRowId, setSelectedRowId] = React.useState(null);
   const tokens = Array.from({ length: 10 }, (_, i) => `token ${i + 1}`);
   const [selectedToken, setSelectedToken] = React.useState(tokens[0]);
+  const { dateRange, setDateRange } = useDateRange();
 
-  // Cargar datos reales agrupados por el token seleccionado
+  // Cargar datos reales agrupados por el token seleccionado y rango de fechas
   React.useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
     const tokenParam = selectedToken.replace(' ', ''); // token1, token2, ...
-    fetch(`${apiUrl}personalizado_stats.php?token=${tokenParam}`)
+    let url = `${apiUrl}personalizado_stats.php?token=${tokenParam}`;
+    if (dateRange.start && dateRange.end) {
+      url += `&start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
+    }
+    fetch(url)
       .then(res => res.json())
       .then(apiData => {
         // Mapear los datos del API a las columnas esperadas por la tabla
@@ -75,7 +82,7 @@ const Personalizado = () => {
         }));
         setData(mapped);
       });
-  }, [selectedToken]);
+  }, [selectedToken, dateRange]);
 
   const filteredData = React.useMemo(() => {
     if (!search.trim()) return data;
@@ -112,9 +119,12 @@ const Personalizado = () => {
               ))}
             </select>
             <span>Fecha:</span>
-            <DateRangePicker />
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+            />
           </div>
-          <button className="bg-[#273958] hover:bg-[#1b263b] text-white font-semibold px-3 py-1 rounded cursor-pointer">Aplicar</button>
+          {/* Botón Aplicar eliminado, ahora está dentro del DateRangePicker */}
           <input
             type="text"
             placeholder="Buscar..."
