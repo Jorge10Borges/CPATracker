@@ -1,7 +1,8 @@
 import * as React from "react";
 import DataTableSection from "../components/DataTableSection";
-import DateRangePicker from "../components/DateRangePicker";
+import Toolbar from "../components/PaginaDestino/Toolbar";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ToastMessage from "../components/ToastMessage";
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
 // Datos de ejemplo eliminados. Se usará fetch para cargar datos reales.
@@ -33,14 +34,34 @@ const defaultColumns = [
 
 
 const PaginaDestino = () => {
+  // Callbacks para el toolbar
+  const handleExcluir = () => {
+    if (selectedRowId !== null) {
+      const row = table.getRowModel().rows.find(r => r.id === selectedRowId);
+      setSelectedDbId(row?.original?.id || null);
+      setShowConfirm(true);
+    }
+  };
+  const handleNueva = () => {};
+  const handleEditar = () => {};
+  const handleInforme = () => {};
   const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
-  const [selectedRowId, setSelectedRowId] = React.useState(null);
+  const [selectedRowId, setSelectedRowId] = React.useState(null); // row.id de react-table
+  const [selectedDbId, setSelectedDbId] = React.useState(null); // id real de la base de datos
   const [dateRange, setDateRange] = React.useState({ start: null, end: null });
+  const [loadingExcluir, setLoadingExcluir] = React.useState(false);
+  // Toast
+  const [toast, setToast] = React.useState({ show: false, message: '', type: 'success' });
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
 
-  React.useEffect(() => {
+  // Cargar datos desde la API
+  const fetchData = React.useCallback(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
     let url = apiUrl + "paginas_destino_stats.php";
     if (dateRange.start && dateRange.end) {
@@ -49,7 +70,9 @@ const PaginaDestino = () => {
     fetch(url)
       .then(res => res.json())
       .then(apiData => {
+        // Guardar el id real de la base de datos en cada fila
         const mapped = apiData.map(row => ({
+          id: row.id, // id real de la base de datos
           pagina: row.nombre,
           visitas: Number(row.visitas) || 0,
           visitas_unicas: Number(row.visitas_unicas) || 0,
@@ -77,139 +100,172 @@ const PaginaDestino = () => {
       });
   }, [dateRange]);
 
+  // Ejecutar fetchData al montar y cuando cambie dateRange
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // ...resto del código sin cambios...
+
+  // Filtrado de datos para la tabla y totales
   const filteredData = React.useMemo(() => {
-    if (!search.trim()) return data;
-    const lower = search.toLowerCase();
-    return data.filter(row =>
-      Object.values(row).some(val =>
-        String(val).toLowerCase().includes(lower)
-      )
-    );
+    let filtered = data;
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = filtered.filter(row =>
+        Object.values(row).some(val => String(val).toLowerCase().includes(s))
+      );
+    }
+    // Si quieres filtrar por dateRange aquí, agrega lógica adicional
+    return filtered;
   }, [data, search]);
 
+  // Instancia de la tabla react-table
   const table = useReactTable({
     data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    columnResizeMode: "onChange",
   });
-
+            // ...existing code...
+  // Render principal limpio
   return (
-    <DataTableSection
-      title="Página destino"
-      toolbar={
-        <>
-          <div className="flex items-center gap-1 text-sm">
-            <span>Fecha:</span>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-          </div>
-          {/* Botón Aplicar eliminado, ahora está dentro del DateRangePicker */}
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="border rounded px-2 py-1 text-sm flex-1 min-w-[120px]"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+    <>
+      <DataTableSection
+        title="Página destino"
+        toolbar={
+          <Toolbar
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            search={search}
+            setSearch={setSearch}
+            selectedRowId={selectedRowId}
+            loadingExcluir={loadingExcluir}
+            onExcluir={handleExcluir}
+            onNueva={handleNueva}
+            onEditar={handleEditar}
+            onInforme={handleInforme}
           />
-          <button
-            className={`bg-gray-200 hover:bg-gray-300 text-[#273958] font-semibold px-3 py-1 rounded${selectedRowId ? ' cursor-pointer' : ' disabled:opacity-50 disabled:cursor-not-allowed'}`}
-            onClick={() => setShowConfirm(true)}
-            disabled={!selectedRowId}
-          >
-            Excluir
-          </button>
-          <button className="bg-[#4EC4FE] hover:bg-[#38a3d8] text-white font-semibold px-3 py-1 rounded cursor-pointer">Nueva</button>
-          <button
-            className={`bg-[#AD43FF] hover:bg-[#8e2ecb] text-white font-semibold px-3 py-1 rounded${selectedRowId ? ' cursor-pointer' : ' disabled:opacity-50 disabled:cursor-not-allowed'}`}
-            disabled={!selectedRowId}
-          >
-            Editar
-          </button>
-          <button className="bg-[#FFB211] hover:bg-[#e09c0f] text-white font-semibold px-3 py-1 rounded cursor-pointer">Informe</button>
-        </>
-      }
-    >
-      <ConfirmDialog
-        open={showConfirm}
-        title="¿Estás seguro?"
-        message="¿Deseas excluir los elementos seleccionados?"
-        onConfirm={() => { setShowConfirm(false); }}
-        onCancel={() => setShowConfirm(false)}
-        confirmText="Sí"
-        cancelText="No"
-      />
-      <div className="overflow-x-auto relative">
-        <table className="min-w-full w-max bg-white border border-gray-200 rounded-lg select-none">
-          <thead className="bg-gray-100">
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <th
-                    key={header.id}
-                    style={{ width: header.getSize(), minWidth: 0, overflow: 'hidden' }}
-                    className="px-4 py-2 text-left text-sm font-semibold text-[#273958] relative group whitespace-nowrap text-ellipsis overflow-hidden"
-                  >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanResize() && (
-                      <div
-                        onMouseDown={header.getResizeHandler()}
-                        onTouchStart={header.getResizeHandler()}
-                        className="absolute right-0 top-0 h-full w-4 cursor-col-resize group-hover:bg-[#FFB211]/30"
-                        style={{ userSelect: "none", touchAction: "none" }}
-                        onClick={e => e.stopPropagation()}
-                      />
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map(row => (
-              <tr
-                key={row.id}
-                className={selectedRowId === row.id ? "bg-[#E6F7FF]" : "hover:bg-gray-100 cursor-pointer"}
-                onClick={() => setSelectedRowId(row.id)}
-              >
-                {row.getVisibleCells().map(cell => {
-                  const isLeft = cell.column.id === 'pagina';
-                  return (
-                    <td
-                      key={cell.id}
-                      className={`px-4 py-2 border-t whitespace-nowrap overflow-hidden text-ellipsis ${isLeft ? 'text-left' : 'text-right'}`}
+        }
+      >
+        <ConfirmDialog
+          open={showConfirm}
+          title="¿Estás seguro?"
+          message="¿Deseas excluir la página seleccionada?"
+          onConfirm={async () => {
+            setLoadingExcluir(true);
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL;
+              const res = await fetch(apiUrl + 'paginas_destino_delete.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: selectedDbId })
+              });
+              const result = await res.json();
+              if (result.success) {
+                setShowConfirm(false);
+                setSelectedRowId(null);
+                setSelectedDbId(null);
+                fetchData(); // Recargar datos
+                showToast('Página excluida correctamente', 'success');
+              } else {
+                showToast(result.error || 'Error al excluir la página', 'error');
+              }
+            } catch (err) {
+              showToast('Error de red al excluir la página', 'error');
+            } finally {
+              setLoadingExcluir(false);
+            }
+          }}
+          onCancel={() => setShowConfirm(false)}
+          confirmText={loadingExcluir ? 'Excluyendo...' : 'Sí'}
+          cancelText="No"
+        />
+        <div className="overflow-x-auto relative">
+          <table className="min-w-full w-max bg-white border border-gray-200 rounded-lg select-none">
+            <thead className="bg-gray-100">
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th
+                      key={header.id}
+                      style={{ width: header.getSize(), minWidth: 0, overflow: 'hidden' }}
+                      className="px-4 py-2 text-left text-sm font-semibold text-[#273958] relative group whitespace-nowrap text-ellipsis overflow-hidden"
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className="absolute right-0 top-0 h-full w-4 cursor-col-resize group-hover:bg-[#FFB211]/30"
+                          style={{ userSelect: "none", touchAction: "none" }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map(row => (
+                <tr
+                  key={row.id}
+                  className={selectedRowId === row.id ? "bg-[#E6F7FF]" : "hover:bg-gray-100 cursor-pointer"}
+                  onClick={() => {
+                    setSelectedRowId(row.id);
+                    setSelectedDbId(row.original?.id || null);
+                  }}
+                >
+                  {row.getVisibleCells().map(cell => {
+                    const isLeft = cell.column.id === 'pagina';
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`px-4 py-2 border-t whitespace-nowrap overflow-hidden text-ellipsis ${isLeft ? 'text-left' : 'text-right'}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {/* Fila de totales única y correctamente cerrada */}
+              <tr className="bg-gray-100 font-bold">
+                {table.getAllColumns().map((col, idx) => {
+                  const id = col.id || col.accessorKey;
+                  if (id === 'pagina') {
+                    return <td key={id} className="px-4 py-2 border-t text-left">Total</td>;
+                  }
+                  const total = filteredData.reduce((acc, row) => {
+                    const val = row[id];
+                    const num = typeof val === 'number' ? val : (parseFloat(String(val).replace(/[^\d.-]/g, '')) || 0);
+                    return acc + (isNaN(num) ? 0 : num);
+                  }, 0);
+                  const isPercent = typeof filteredData[0]?.[id] === 'string' && String(filteredData[0][id]).includes('%');
+                  const isMoney = id === 'ingresos' || id === 'costo' || id === 'beneficio';
+                  let display = '';
+                  if (filteredData.length === 0) display = '';
+                  else if (isPercent) display = '';
+                  else if (isMoney) display = `$${total.toFixed(2)}`;
+                  else display = total % 1 === 0 ? total : total.toFixed(2);
+                  return (
+                    <td key={id} className="px-4 py-2 border-t text-right">{display}</td>
                   );
                 })}
               </tr>
-            ))}
-            <tr className="bg-gray-100 font-bold">
-              {table.getAllColumns().map((col, idx) => {
-                const id = col.id || col.accessorKey;
-                if (id === 'pagina') return <td key={id} className="px-4 py-2 border-t text-left">Total</td>;
-                const total = filteredData.reduce((acc, row) => {
-                  const val = row[id];
-                  const num = typeof val === 'number' ? val : (parseFloat(String(val).replace(/[^\d.-]/g, '')) || 0);
-                  return acc + (isNaN(num) ? 0 : num);
-                }, 0);
-                const isPercent = typeof filteredData[0]?.[id] === 'string' && String(filteredData[0][id]).includes('%');
-                const isMoney = id === 'ingresos' || id === 'costo' || id === 'beneficio';
-                let display = '';
-                if (filteredData.length === 0) display = '';
-                else if (isPercent) display = '';
-                else if (isMoney) display = `$${total.toFixed(2)}`;
-                else display = total % 1 === 0 ? total : total.toFixed(2);
-                return (
-                  <td key={id} className="px-4 py-2 border-t text-right">{display}</td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </DataTableSection>
+              {/* Fila de totales única y correctamente cerrada */}
+            </tbody>
+          </table>
+        </div>
+        <ToastMessage
+          show={toast.show}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(t => ({ ...t, show: false }))}
+        />
+      </DataTableSection>
+    </>
   );
-};
+}
 
 export default PaginaDestino;
