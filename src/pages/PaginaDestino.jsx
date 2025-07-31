@@ -3,10 +3,11 @@ import DataTableSection from "../components/DataTableSection";
 import Toolbar from "../components/PaginaDestino/Toolbar";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ToastMessage from "../components/ToastMessage";
+import PaginaDestinoModal from "../components/PaginaDestino/PaginaDestinoModal";
+
 import { useReactTable, getCoreRowModel, flexRender } from "@tanstack/react-table";
 
-// Datos de ejemplo eliminados. Se usará fetch para cargar datos reales.
-
+// Definición de las columnas por defecto para la tabla
 const defaultColumns = [
   { header: "Página destino", accessorKey: "pagina", size: 160, minSize: 100, enableResizing: true },
   { header: "Visitas", accessorKey: "visitas", size: 100, minSize: 80, enableResizing: true },
@@ -32,35 +33,24 @@ const defaultColumns = [
   { header: "AP", accessorKey: "ap", size: 60, minSize: 50, enableResizing: true },
 ];
 
-
-const PaginaDestino = () => {
-  // Callbacks para el toolbar
-  const handleExcluir = () => {
-    if (selectedRowId !== null) {
-      const row = table.getRowModel().rows.find(r => r.id === selectedRowId);
-      setSelectedDbId(row?.original?.id || null);
-      setShowConfirm(true);
-    }
-  };
-  const handleNueva = () => {};
-  const handleEditar = () => {};
-  const handleInforme = () => {};
+function PaginaDestino() {
   const [data, setData] = React.useState([]);
   const [columns] = React.useState(() => [...defaultColumns]);
   const [search, setSearch] = React.useState("");
   const [showConfirm, setShowConfirm] = React.useState(false);
-  const [selectedRowId, setSelectedRowId] = React.useState(null); // row.id de react-table
-  const [selectedDbId, setSelectedDbId] = React.useState(null); // id real de la base de datos
+  const [selectedRowId, setSelectedRowId] = React.useState(null);
+  const [selectedDbId, setSelectedDbId] = React.useState(null);
   const [dateRange, setDateRange] = React.useState({ start: null, end: null });
   const [loadingExcluir, setLoadingExcluir] = React.useState(false);
-  // Toast
   const [toast, setToast] = React.useState({ show: false, message: '', type: 'success' });
+  const [showModal, setShowModal] = React.useState(false);
+  const [editPagina, setEditPagina] = React.useState(null);
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
   };
 
-  // Cargar datos desde la API
   const fetchData = React.useCallback(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
     let url = apiUrl + "paginas_destino_stats.php";
@@ -70,14 +60,16 @@ const PaginaDestino = () => {
     fetch(url)
       .then(res => res.json())
       .then(apiData => {
-        // Guardar el id real de la base de datos en cada fila
         const mapped = apiData.map(row => ({
-          id: row.id, // id real de la base de datos
-          pagina: row.nombre,
+          id: row.id,
+          nombre: row.nombre, // para edición
+          pagina: row.nombre, // para mostrar en la tabla
+          estado: row.estado || "activa", // asegurar que el estado esté presente
+          url: row.url || "", // asegurar que la url esté presente
           visitas: Number(row.visitas) || 0,
           visitas_unicas: Number(row.visitas_unicas) || 0,
           clics: Number(row.clics) || 0,
-          clics_unicos: 0, // Si tienes este dato en el futuro, agrégalo aquí
+          clics_unicos: 0,
           conversiones: Number(row.conversiones) || 0,
           ingresos: Number(row.ingresos) || 0,
           costo: Number(row.costo) || 0,
@@ -86,7 +78,7 @@ const PaginaDestino = () => {
           cpc: row.clics > 0 ? (row.costo / row.clics).toFixed(2) : "0.00",
           ctr: row.CTR + "%",
           ctr1x: row.CTR > 0 ? `1/${Math.round(100/row.CTR)}` : "",
-          uctr: "0%", // Si tienes este dato en el futuro, agrégalo aquí
+          uctr: "0%",
           cr: row.CR + "%",
           cr1x: row.CR > 0 ? `1/${Math.round(100/row.CR)}` : "",
           cv: row.conversiones,
@@ -100,14 +92,10 @@ const PaginaDestino = () => {
       });
   }, [dateRange]);
 
-  // Ejecutar fetchData al montar y cuando cambie dateRange
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // ...resto del código sin cambios...
-
-  // Filtrado de datos para la tabla y totales
   const filteredData = React.useMemo(() => {
     let filtered = data;
     if (search) {
@@ -116,20 +104,50 @@ const PaginaDestino = () => {
         Object.values(row).some(val => String(val).toLowerCase().includes(s))
       );
     }
-    // Si quieres filtrar por dateRange aquí, agrega lógica adicional
     return filtered;
   }, [data, search]);
 
-  // Instancia de la tabla react-table
   const table = useReactTable({
     data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
-            // ...existing code...
-  // Render principal limpio
+
+  const handleExcluir = () => {
+    if (selectedRowId !== null) {
+      const row = table.getRowModel().rows.find(r => r.id === selectedRowId);
+      setSelectedDbId(row?.original?.id || null);
+      setShowConfirm(true);
+    }
+  };
+  const handleNueva = () => {
+    setEditPagina(null);
+    setShowModal(true);
+  };
+  const handleEditar = () => {
+    if (selectedRowId !== null) {
+      const row = table.getRowModel().rows.find(r => r.id === selectedRowId);
+      if (row) {
+        setEditPagina(row.original);
+        setShowModal(true);
+      }
+    }
+  };
+  const handleInforme = () => {};
+
   return (
     <>
+      {/* Modal para nueva página de destino */}
+      {showModal && (
+        <PaginaDestinoModal
+          show={showModal}
+          onClose={() => setShowModal(false)}
+          editPagina={editPagina}
+          showToast={showToast}
+          onSubmit={e => { e.preventDefault(); /* lógica de guardado aquí */ setShowModal(false); }}
+          setEditPagina={setEditPagina}
+        />
+      )}
       <DataTableSection
         title="Página destino"
         toolbar={

@@ -40,14 +40,42 @@ const PaginaDestinoModal = ({ show, onClose, editPagina, showToast, onSubmit, se
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">URL</label>
-            <input
-              type="text"
+            <textarea
               name="url"
-              className="border rounded px-3 py-2 w-full"
+              className="border rounded px-3 py-2 w-full min-h-[60px] resize-y"
               value={url}
               onChange={e => setUrl(e.target.value)}
               required
             />
+            <div className="flex flex-wrap gap-1 mt-2">
+              {/* Botones de tokens disponibles */}
+              {[
+                'campaignId','trafficSourceId','landingId','flowNumber','offerId','deviceType','os','countryCode','city','ip',
+                'custom1','custom2','custom3','custom4','custom5','custom6','custom7','custom8','custom9','custom10','referrerDomain'
+              ].map(token => {
+                const tokenStr = `{${token}}`;
+                const alreadyIncluded = url.includes(tokenStr);
+                return (
+                  <button
+                    key={token}
+                    type="button"
+                    className={
+                      `text-xs px-2 py-1 rounded font-mono border ` +
+                      (alreadyIncluded
+                        ? 'bg-green-100 border-green-400 text-green-700 cursor-not-allowed opacity-60'
+                        : 'bg-gray-100 border-gray-300 hover:bg-gray-200 text-gray-700')
+                    }
+                    style={{lineHeight:'1.1'}}
+                    disabled={alreadyIncluded}
+                    onClick={() => {
+                      if (!alreadyIncluded) setUrl(url + tokenStr);
+                    }}
+                  >
+                    + {tokenStr}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Estado</label>
